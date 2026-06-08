@@ -1,7 +1,6 @@
-
+DATA_PATH	= /home/blohrer/data
 # Shortcut damit der compose-Befehl nicht jedes Mal ausgeschrieben werden muss
 COMPOSE		= docker compose -f srcs/docker-compose.yml
-
 # Standard-Ziel: Verzeichnisse anlegen, Images bauen, Container starten
 all:
 	@mkdir -p $(DATA_PATH)/mariadb $(DATA_PATH)/wordpress
