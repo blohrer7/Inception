@@ -1,0 +1,100 @@
+services:
+
+  # ─── 1. DATABASE ──────────────────────────────────────────────────────────────
+  # MariaDB ist die innerste Schicht – alle anderen Services hängen davon ab.
+  # Kein Port wird nach außen exponiert; nur über das inception-Netzwerk erreichbar.
+  mariadb:
+    build:
+      context: requirements/mariadb
+      dockerfile: Dockerfile
+    image: mariadb
+    container_name: mariadb
+    restart: unless-stopped
+    volumes:
+      - mariadb:/var/lib/mysql     # persistente Datenbank-Dateien
+    networks:
+      - inception
+    env_file:
+      - .env                       # MYSQL_DATABASE, MYSQL_USER (kein Passwort!)
+    secrets:
+      - db_password                # Passwort für MYSQL_USER  → /run/secrets/db_password
+      - db_root_password           # Root-Passwort            → /run/secrets/db_root_password
+
+  # ─── 2. APPLICATION ───────────────────────────────────────────────────────────
+  # WordPress + PHP-FPM. Lauscht auf Port 9000 (FastCGI), nicht auf HTTP.
+  # NGINX leitet PHP-Anfragen per fastcgi_pass hierhin weiter.
+  # Teilt das wordpress-Volume mit NGINX, damit beide die gleichen Dateien sehen.
+  wordpress:
+    build:
+      context: requirements/wordpress
+      dockerfile: Dockerfile
+    image: wordpress
+    container_name: wordpress
+    restart: unless-stopped
+    volumes:
+      - wordpress:/var/www/wordpress   # WP-Core + Uploads (geteilt mit nginx)
+    networks:
+      - inception
+    depends_on:
+      - mariadb                    # startet erst wenn MariaDB-Container läuft
+    env_file:
+      - .env                       # DOMAIN_NAME, WP_*, MYSQL_DATABASE, MYSQL_USER
+    secrets:
+      - db_password                # DB-Verbindungspasswort
+      - credentials                # WP Admin- und Editor-Passwörter
+
+  # ─── 3. WEBSERVER ─────────────────────────────────────────────────────────────
+  # NGINX ist der einzige Eintrittspunkt von außen – nur Port 443 (HTTPS).
+  # TLSv1.2 / TLSv1.3, selbstsigniertes Zertifikat wird beim ersten Start generiert.
+  # Statische Dateien direkt aus dem Volume; PHP → FastCGI → wordpress:9000.
+  nginx:
+    build:
+      context: requirements/nginx
+      dockerfile: Dockerfile
+    image: nginx
+    container_name: nginx
+    restart: unless-stopped
+    ports:
+      - "443:443"                  # einziger nach außen offener Port
+    volumes:
+      - wordpress:/var/www/wordpress   # liest WP-Dateien (read-only möglich, aber nicht erzwungen)
+    networks:
+      - inception
+    depends_on:
+      - wordpress                  # startet erst wenn WordPress-Container läuft
+
+# ─── VOLUMES ────────────────────────────────────────────────────────────────────
+# Named Volumes mit driver_opts → Daten landen auf dem Host unter /home/blohrer/data.
+# Bind-Mounts sind laut Subject verboten; dies ist die konforme Alternative.
+volumes:
+  mariadb:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /home/blohrer/data/mariadb
+
+  wordpress:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /home/blohrer/data/wordpress
+
+# ─── NETWORK ────────────────────────────────────────────────────────────────────
+# Eigenes Bridge-Netzwerk → Container kommunizieren per Service-Name (DNS).
+# network: host und --link sind verboten; bridge ist die korrekte Wahl.
+networks:
+  inception:
+    driver: bridge
+
+# ─── SECRETS ────────────────────────────────────────────────────────────────────
+# Secrets werden als Dateien unter /run/secrets/<name> in den Container gemountet.
+# Niemals in Dockerfiles oder Umgebungsvariablen hardcoden!
+secrets:
+  db_password:
+    file: ../secrets/db_password.txt
+  db_root_password:
+    file: ../secrets/db_root_password.txt
+  credentials:
+    file: ../secrets/credentials.txt
