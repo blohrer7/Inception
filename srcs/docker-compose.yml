@@ -110,13 +110,15 @@ services:
 
   monitor:
     build:
-      context: requirements/bonus/portainer
+      context: requirements/bonus/monitor
       dockerfile: Dockerfile
     image: monitor
     container_name: monitor
     restart: unless-stopped
     ports:
       - "9000:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - inception
 
