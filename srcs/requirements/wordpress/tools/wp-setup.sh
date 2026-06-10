@@ -48,6 +48,11 @@ if ! wp core is-installed --allow-root 2>/dev/null; then
     echo "[wp-setup] WordPress installed successfully."
 fi
 
+# Fix upload permissions
+mkdir -p "${WP_PATH}/wp-content/uploads"
+chown -R www-data:www-data "${WP_PATH}/wp-content/uploads"
+chmod -R 755 "${WP_PATH}/wp-content/uploads"
+
 # Redis cache setup
 if ! wp plugin is-installed redis-cache --allow-root 2>/dev/null; then
     wp plugin install redis-cache --activate --allow-root
