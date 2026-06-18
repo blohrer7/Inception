@@ -12,78 +12,33 @@ The mandatory stack consists of NGINX as the only entry point (HTTPS, port 443),
 
 All sensitive data (passwords, credentials) is handled via Docker secrets. Non-sensitive configuration lives in a `.env` file. Data is persisted through bind-mounted volumes under `/home/blohrer/data/` so everything survives container restarts and VM reboots.
 
----
+### Project sources
 
-## Instructions
+The repository is structured as follows:
 
-### Requirements
-
-- Debian-based VM (project was built and tested on Debian 12 / bookworm)
-- Docker and Docker Compose V2
-- Make
-
-### Setup
-
-Clone the repository and navigate into it:
-
-```bash
-git clone https://github.com/blohrer/inception
-cd inception
+```
+inception/
+├── Makefile                        # Top-level build and management commands
+├── secrets/                        # Docker secret files (not committed)
+└── srcs/
+    ├── docker-compose.yml          # Defines all services, networks, and volumes
+    ├── .env                        # Non-sensitive configuration variables
+    └── requirements/
+        ├── nginx/                  # NGINX container (TLS entry point)
+        ├── wordpress/              # WordPress + PHP-FPM container
+        ├── mariadb/                # MariaDB container
+        ├── redis/                  # Redis cache container (bonus)
+        ├── ftp/                    # vsftpd FTP server container (bonus)
+        ├── adminer/                # Adminer database UI container (bonus)
+        ├── static/                 # Static HTML website container (bonus)
+        └── monitor/                # Custom Docker monitor container (bonus)
 ```
 
-Create the secrets directory and populate the secret files:
+Each `requirements/<service>/` directory contains a `Dockerfile` and a `conf/` or `tools/` subdirectory with all configuration files and entrypoint scripts for that service.
 
-```bash
-mkdir -p secrets
-echo "your_db_password"   > secrets/db_password.txt
-echo "your_root_password" > secrets/db_root_password.txt
-printf "ADMIN_PASSWORD=your_admin_pass\nUSER_PASSWORD=your_user_pass\n" > secrets/credentials.txt
-```
+### Design choices
 
-Create the `.env` file inside `srcs/`:
-
-```bash
-cat > srcs/.env << 'EOF'
-DOMAIN_NAME=blohrer.42.fr
-MYSQL_DATABASE=wordpress
-MYSQL_USER=wpuser
-WP_TITLE=Inception
-WP_ADMIN_USER=blohrer
-WP_ADMIN_EMAIL=blohrer@student.42.fr
-WP_USER=editor
-WP_USER_EMAIL=editor@student.42.fr
-EOF
-```
-
-Add the domain to your local hosts file:
-
-```bash
-echo "127.0.0.1 blohrer.42.fr" | sudo tee -a /etc/hosts
-```
-
-Build and start everything:
-
-```bash
-make
-```
-
-### Useful commands
-
-| Command | Effect |
-|---|---|
-| `make` | Build images and start all containers |
-| `make down` | Stop and remove containers (data preserved) |
-| `make re` | Full restart (down + up) |
-| `make clean` | Remove containers, images, and data directories |
-| `make logs` | Follow logs of all containers |
-| `make ps` | Show status of all containers |
-
----
-
-## Project Design
-
-### Why Docker?
-
+**Why Docker?**
 A traditional setup would mean installing nginx, PHP, MariaDB and all other services directly on the host machine — mixing their configs, dependencies and processes together. Docker separates each service into its own isolated container with its own filesystem and network interface, while still sharing the host kernel. The result is a reproducible, portable infrastructure that can be torn down and rebuilt with a single command.
 
 ### Virtual Machines vs Docker
@@ -104,12 +59,47 @@ Docker-managed volumes are handled entirely by Docker and live in `/var/lib/dock
 
 ---
 
+## Instructions
+
+**Requirements:** Debian-based VM (tested on Debian 12), Docker with Compose V2, Make.
+
+Clone the repository, then run:
+
+```bash
+make
+```
+
+For full setup instructions (secrets, `.env`, hosts entry, all Makefile commands) see [DEV_DOC.md](DEV_DOC.md).
+
+---
+
 ## Resources
+
+### Docker
 
 - [Docker documentation](https://docs.docker.com/)
 - [Docker Compose documentation](https://docs.docker.com/compose/)
-- [Inception guide by imyzf](https://medium.com/@imyzf/inception-3979046d90a0)
-- [Inception guide by ssterdev](https://medium.com/@ssterdev/inception-guide-42-project-part-i-7e3af15eb671)
+- [Docker secrets documentation](https://docs.docker.com/engine/swarm/secrets/)
+- [Dockerfile best practices](https://docs.docker.com/develop/develop-images/dockerfile_best-practices/)
+- [Docker networking overview](https://docs.docker.com/network/)
+
+### Services
+
+- [NGINX documentation](https://nginx.org/en/docs/)
+- [NGINX SSL/TLS configuration guide](https://nginx.org/en/docs/http/configuring_https_servers.html)
+- [PHP-FPM configuration](https://www.php.net/manual/en/install.fpm.configuration.php)
+- [MariaDB documentation](https://mariadb.com/kb/en/documentation/)
+- [WordPress CLI documentation](https://developer.wordpress.org/cli/commands/)
+- [Redis documentation](https://redis.io/docs/)
+- [vsftpd documentation](https://security.appspot.com/vsftpd.html)
+- [Adminer documentation](https://www.adminer.org/)
+
+### Tutorials and articles
+
+- [How HTTPS works](https://howhttps.works/)
+- [Understanding PID 1 in Docker containers](https://www.cloudbees.com/blog/java-deep-dive-docker-pid-1)
+- [Docker volumes vs bind mounts](https://docs.docker.com/storage/volumes/)
+- [WordPress object caching with Redis](https://developer.wordpress.org/reference/classes/wp_object_cache/)
 
 ### Use of AI
 
