@@ -97,7 +97,6 @@ For full setup instructions (secrets, `.env`, hosts entry, all Makefile commands
 ### Tutorials and articles
 
 - [How HTTPS works](https://howhttps.works/)
-- [Understanding PID 1 in Docker containers](https://www.cloudbees.com/blog/java-deep-dive-docker-pid-1)
 - [Docker volumes vs bind mounts](https://docs.docker.com/storage/volumes/)
 - [WordPress object caching with Redis](https://developer.wordpress.org/reference/classes/wp_object_cache/)
 
